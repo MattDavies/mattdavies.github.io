@@ -29,10 +29,10 @@ author:
 ---
 <p>Increasingly when using <a href="http://www.windowsazure.com/en-us/develop/php/common-tasks/create-a-php-web-site/">Azure Websites</a>, I'm finding the need to convert .htaccess files provided with PHP websites into web.config files that Azure/IIS understand.</p>
 <p>A quick helpful tip, IIS can do this for you (after installing the <a href="http://www.iis.net/downloads/microsoft/url-rewrite" target="_blank">URL Rewrite extension</a>):</p>
-<p>1) Open the IIS Management Console on your local machine. <img alt="Step 1" src="assets/HT-Step1-1024x705.jpg" /></p>
-<p>2) Open the URL Rewrite section under Default Web Site (or any other Site). <img alt="Step 2" src="assets/HT-Step2-1024x705.jpg" /></p>
-<p>3) Click on Import Rules... on the right menu. <img alt="Step 3" src="assets/HT-Step3-1024x705.jpg" /></p>
-<p>4) Paste the contents of your .htaccess file into the Rewrite Rules field. <img alt="Step 4" src="assets/HT-Step4-1024x705.jpg" /></p>
+<p>1) Open the IIS Management Console on your local machine. <img alt="Step 1" src="{{ site.baseurl }}assets/HT-Step1-1024x705.jpg" /></p>
+<p>2) Open the URL Rewrite section under Default Web Site (or any other Site). <img alt="Step 2" src="{{ site.baseurl }}assets/HT-Step2-1024x705.jpg" /></p>
+<p>3) Click on Import Rules... on the right menu. <img alt="Step 3" src="{{ site.baseurl }}assets/HT-Step3-1024x705.jpg" /></p>
+<p>4) Paste the contents of your .htaccess file into the Rewrite Rules field. <img alt="Step 4" src="{{ site.baseurl }}assets/HT-Step4-1024x705.jpg" /></p>
 <p>5) Create a new web.config file using the following template, filling in the rules with the XML from the XML View.</p>
 <pre lang="xml" escaped="true" line="1">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
 &lt;configuration&gt;
