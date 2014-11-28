@@ -11,12 +11,13 @@ Install Jekyll locally on [Windows](http://jekyll-windows.juthilo.com/) for debu
 ---
 {% highlight powershell %}
 New-Item -ItemType Directory -Force -Path "C:\temp\wpjekyll"
-Invoke-WebRequest "http://dl.bintray.com/oneclick/rubyinstaller/rubyinstaller-2.1.5-x64.exe?direct" -OutFile "C:\temp\wpjekyll\rubyinstaller.exe"
-C:\temp\wpjekyll\rubyinstaller.exe /verysilent /tasks="modpath"
-Invoke-WebRequest "http://cdn.rubyinstaller.org/archives/devkits/DevKit-mingw64-64-4.7.2-20130224-1432-sfx.exe" -OutFile "C:\temp\wpjekyll\rubydevkitinstaller.exe"
-C:\temp\wpjekyll\rubydevkitinstaller.exe -o "C:\RubyDevKit" -y
-ruby C:\RubyDevKit\dk.rb init
-ruby C:\RubyDevKit\dk.rb install
+cd "C:\temp\wpjekyll"
+Invoke-WebRequest "http://dl.bintray.com/oneclick/rubyinstaller/rubyinstaller-2.1.5-x64.exe?direct"
+rubyinstaller-2.1.5-x64.exe /verysilent /tasks="modpath"
+Invoke-WebRequest "http://cdn.rubyinstaller.org/archives/devkits/DevKit-mingw64-64-4.7.2-20130224-1432-sfx.exe"
+DevKit-mingw64-64-4.7.2-20130224-1432-sfx.exe -o "C:\RubyDevKit" -y
+ruby "C:\RubyDevKit\dk.rb" init
+ruby "C:\RubyDevKit\dk.rb" install
 gem install jekyll
 {% endhighlight %}
 
