@@ -1,0 +1,256 @@
+---
+layout: post
+title: Creating a high performance MySQL VM in Azure
+date: 2014-01-10 19:46:04.000000000 +08:00
+categories: []
+tags: []
+status: draft
+type: post
+published: false
+meta:
+  _edit_last: '1'
+  _su_rich_snippet_type: none
+author:
+  login: admin
+  email: matt@mdavies.net
+  display_name: Matt
+  first_name: ''
+  last_name: ''
+---
+<h2>Background</h2>
+<p>In migrating some existing legacy applications to Azure, I've hit a need for a high performance MySQL environment. The existing cloud based PaaS MySQL services I've reviewed haven't cut it for me - though they often have impressive redundancy configuration, many charge incredibly high amounts for each database you use and allocate low levels of storage, which doesn't suit my needs (a high number of databases at very mixed sizes).</p>
+<p>Given this, I decided to experiment with building a production MySQL environment using Azure Virtual Machines. I'm hoping by documenting the steps I've taken, it might help others who are trying to achieve something similar - if you do build your own, leave me a comment especially if you came up with any improvements! The steps below are fairly generic and can be used for any situation where you need to build a Linux based VM with high disk I/O performance.</p>
+<h2>Create the Virtual Machine</h2>
+<p>There are <a href="http://www.windowsazure.com/en-us/manage/linux/tutorials/virtual-machine-from-gallery/" target="_blank">lots of</a> different <a href="http://www.hanselman.com/blog/Over400VirtualMachineImagesOfOpenSourceSoftwareStacksInTheVMDepotAzureGallery.aspx" target="_blank">guides out there</a> on creating Linux VMs in Azure, so I'm not going to cover it in too much detail. Jump into the Virtual Machines tab, and create one from the gallery - I tend to lean towards RHEL/CentOS based images for production Linux environments, so the screenshots below will be based on the OpenLogic image in the gallery. Just about any distribution will work fine for this though.</p>
+<p>Before you create the VM, make sure you first create an <a href="http://msdn.microsoft.com/library/windowsazure/jj156085.aspx" target="_blank">affinity group</a>. In this scenario, it's going to be incredibly important we keep all our services located closely together for high performance.</p>
+<p>&nbsp;</p>
+<p><a href="http://blog.mdavies.net/wp-content/uploads/sites/11/2013/12/Screenshot-2013-12-21-13.47.17.png"><img class="alignnone size-large wp-image-801" alt="Screenshot 2013-12-21 13.47.17" src="assets/Screenshot-2013-12-21-13.47.17-1024x788.png" width="625" height="480" /></a></p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>Once you're done, go ahead and create the VM.</p>
+<p><a href="http://blog.mdavies.net/wp-content/uploads/sites/11/2013/12/Screenshot-2013-12-21-13.37.34.png"><img class="alignnone size-large wp-image-771" alt="Screenshot 2013-12-21 13.37.34" src="assets/Screenshot-2013-12-21-13.37.34-1024x788.png" width="625" height="480" /></a></p>
+<p>For testing purposes I'm going to be using a Large instance - the type of instance you choose will play a role later in how <a href="http://msdn.microsoft.com/en-us/library/windowsazure/dn197896.aspx" target="_blank">far we can scale</a> IO performance.</p>
+<p><a href="http://blog.mdavies.net/wp-content/uploads/sites/11/2013/12/newvm1.png"><img class="alignnone size-full wp-image-861" alt="newvm" src="assets/newvm1.png" width="1006" height="635" /></a></p>
+<p><a style="line-height: 1.714285714; font-size: 1rem;" href="http://blog.mdavies.net/wp-content/uploads/sites/11/2013/12/Screenshot-2013-12-21-13.54.03.png"><img class="alignnone size-large wp-image-811" alt="Screenshot 2013-12-21 13.54.03" src="assets/Screenshot-2013-12-21-13.54.03-1024x788.png" width="625" height="480" /></a></p>
+<p>This is a good opportunity to add any firewall rules you might need later. You can always go back and <a href="http://www.windowsazure.com/en-us/manage/windows/how-to-guides/setup-endpoints/" target="_blank">do this later</a> from the Endpoints tab of your Virtual Machine.</p>
+<h2>Plan of attack</h2>
+<p>In my research I ran into a particularly comprehensive MSDN white paper called <a href="http://go.microsoft.com/fwlink/?LinkId=306266" target="_blank">Performance Guidance for SQL Server in Windows Azure Virtual Machines</a> which goes into great detail on the strategies we can use for enhancing disk performance, as well as a great post by <a href="https://twitter.com/NunoGodinho" target="_blank">@NunoGodinho</a> called <a href="http://msmvps.com/blogs/nunogodinho/archive/2013/04/22/lessons-learned-taking-the-best-out-of-windows-azure-virtual-machines.aspx" target="_blank">Lessons Learned: Taking the best out of Windows Azure Virtual Machines</a>.</p>
+<p><span style="line-height: 1.714285714; font-size: 1rem;">We're going to go ahead and implement the most effective of these strategies - multiple data disks in a striped configuration. The tests from the white paper tell us that in a single disk configuration we should expect something like this:</span></p>
+<p><strong>Single Data Disk (Extra Small Instance Max)</strong></p>
+<table border="0">
+<tbody>
+<tr>
+<td></td>
+<td colspan="2"><strong>Random I/O (8 KB Pages)</strong></td>
+<td colspan="2"><strong>Sequential I/O (64 KB Extents)</strong></td>
+</tr>
+<tr>
+<td></td>
+<td><strong>Reads</strong></td>
+<td><strong>Writes</strong></td>
+<td><strong>Reads</strong></td>
+<td><strong>Writes</strong></td>
+</tr>
+<tr>
+<td><strong>IOPS</strong></td>
+<td>500</td>
+<td>500</td>
+<td>500</td>
+<td>500</td>
+</tr>
+<tr>
+<td><strong>Bandwidth</strong></td>
+<td>4 MB/s</td>
+<td>4 MB/s</td>
+<td>30 MB/s</td>
+<td>20 MB/s</td>
+</tr>
+</tbody>
+</table>
+<p>The white paper goes on to benchmark what we could achieve by using multiple data disks:</p>
+<p><strong>4 Data Disks (Medium Instance Max)</strong></p>
+<table border="0">
+<tbody>
+<tr>
+<td></td>
+<td colspan="2"><strong>Random I/O (8 KB Pages)</strong></td>
+<td colspan="2"><strong>Sequential I/O (64 KB Extents)</strong></td>
+</tr>
+<tr>
+<td></td>
+<td><strong>Reads</strong></td>
+<td><strong>Writes</strong></td>
+<td><strong>Reads</strong></td>
+<td><strong>Writes</strong></td>
+</tr>
+<tr>
+<td><strong>IOPS</strong></td>
+<td>2000</td>
+<td>2000</td>
+<td>2000</td>
+<td>1300</td>
+</tr>
+<tr>
+<td><strong>Bandwidth</strong></td>
+<td>20 MB/s</td>
+<td>20 MB/s</td>
+<td>120 MB/s</td>
+<td>80 MB/s</td>
+</tr>
+</tbody>
+</table>
+<p><strong>8 Data Disks (Large Instance Max)</strong></p>
+<table border="0">
+<tbody>
+<tr>
+<td></td>
+<td colspan="2"><strong>Random I/O (8 KB Pages)</strong></td>
+<td colspan="2"><strong>Sequential I/O (64 KB Extents)</strong></td>
+</tr>
+<tr>
+<td></td>
+<td><strong>Reads</strong></td>
+<td><strong>Writes</strong></td>
+<td><strong>Reads</strong></td>
+<td><strong>Writes</strong></td>
+</tr>
+<tr>
+<td><strong>IOPS</strong></td>
+<td>4000</td>
+<td>4000</td>
+<td>2500</td>
+<td>2600</td>
+</tr>
+<tr>
+<td><strong>Bandwidth</strong></td>
+<td>30 MB/s</td>
+<td>30 MB/s</td>
+<td>150 MB/s</td>
+<td>160 MB/s</td>
+</tr>
+</tbody>
+</table>
+<p><strong>16 Data Disks (Extra Large Instance Max)</strong></p>
+<table border="0">
+<tbody>
+<tr>
+<td></td>
+<td colspan="2"><strong>Random I/O (8 KB Pages)</strong></td>
+<td colspan="2"><strong>Sequential I/O (64 KB Extents)</strong></td>
+</tr>
+<tr>
+<td></td>
+<td><strong>Reads</strong></td>
+<td><strong>Writes</strong></td>
+<td><strong>Reads</strong></td>
+<td><strong>Writes</strong></td>
+</tr>
+<tr>
+<td><strong>IOPS</strong></td>
+<td>8000</td>
+<td>8000</td>
+<td>2500</td>
+<td>5000</td>
+</tr>
+<tr>
+<td><strong>Bandwidth</strong></td>
+<td>60 MB/s</td>
+<td>60 MB/s</td>
+<td>150 MB/s</td>
+<td>300 MB/s</td>
+</tr>
+</tbody>
+</table>
+<p><span style="line-height: 1.714285714; font-size: 1rem;">With the current storage account IOPS limits, it's actually simpler for configuration and data recovery to keep our data disks in the same storage account. Each new storage account now <a href="http://msdn.microsoft.com/en-us/library/windowsazure/dn249410.aspx" target="_blank">runs at up to 20,000 IOPS</a>, which is well within our limits above. See <a href="http://msdn.microsoft.com/en-us/library/windowsazure/dn197896.aspx" target="_blank">this post</a> for more information about how many data disks can be attached to different instance types.</span></p>
+<h2>Getting Started</h2>
+<p>Using the Management Portal, open up your VM and click Attach -&gt; Empty Disk down the bottom. Given I'm testing on a Large VM, I'll be adding 8 data disks below. The general recommendation for host caching is to use None for high IO, higher latency (given Azure Storage can handle far more concurrent IOPS than the attached physical disks) and read or read/write cache for situations that require low latency and don't need as high IOPS (very important for your OS disk). For my database VM, I'll need to use None for host caching on these new disks.</p>
+<p>When considering how many disks to use and how large to make them, you'll also need to think about pricing. There is <a href="http://blogs.msdn.com/b/windowsazurestorage/archive/2012/06/28/exploring-windows-azure-drives-disks-and-images.aspx" target="_blank">some evidence here</a> that given Azure stores VHDs in sparse format, so you'll only initially be charged for the actual space you consume on these. However, most operating systems including Linux won't automatically fully clear out deleted data from a disk, so over time you'll pay up for the full size of the disks. Those costs will be multiplied out over how many disks you're using here, given we'll be running these disks in striping mode. <a href="http://www.windowsazure.com/en-us/pricing/details/storage/" target="_blank">Check this page</a> for pricing details, and if this strategy will exceed your budget, look at alternatives like splitting the location of your data files across a smaller number of disks manually (for absolute maximum efficiency based on workloads per data file) rather than using striping.</p>
+<p><a href="http://blog.mdavies.net/wp-content/uploads/sites/11/2013/12/adding-disks.png"><img class="alignnone size-full wp-image-871" alt="Adding Disks" src="assets/adding-disks.png" width="497" height="731" /></a></p>
+<p>Adding all these disks can take a while! If you'll be doing this a lot, go and grab <a href=" http://go.microsoft.com/fwlink/p/?linkid=320376&amp;clcid=0x409">Windows Azure Powershell</a> and check out the <a href="http://msdn.microsoft.com/en-us/library/jj152837.aspx" target="_blank">Add-AzureDataDisk command</a>. When you're done, the bottom of your VM overview page should look something like this:</p>
+<p><a href="http://blog.mdavies.net/wp-content/uploads/sites/11/2013/12/diskscreated.png"><img class="alignnone size-full wp-image-881" alt="disks created" src="assets/diskscreated.png" width="636" height="383" /></a></p>
+<p>Next, let's SSH into our new VM and do a simple benchmark before we get started. You can skip this step or replace it with your own benchmarking tools if you're setting this VM up for a different application. If you are setting this VM up for MySQL, make sure you also <a href="http://dev.mysql.com/doc/refman/5.6/en/mysql-secure-installation.html" target="_blank">secure your installation</a>.</p>
+<p>*** Maybe delete this ***</p>
+<p>There are a lot of utilities out there for benchmarking, but I wanted something extremely simple to do a fast test on 8KB sequential reads. Using an article called <a href="http://socorro.readthedocs.org/en/latest/diskperformancetests.html" target="_blank">Disk Performance Tests</a>, I've thrown together a <a href="https://github.com/MattDavies/BlogDemos/blob/master/iobench.sh" target="_blank">simple bash script</a> for us to use. It's worth giving <a href="http://www.slashroot.in/linux-file-system-read-write-performance-test" target="_blank">Linux File System Read Write Performance Test</a> a read if you're interested in other options, or if my script doesn't work for you.</p>
+<p>*** Maybe delete this ***</p>
+<p>The formatting can be a little tricky to follow, but I'll point out what we're interested in below.</p>
+<p><strong style="line-height: 1.714285714; font-size: 1rem;">Checking the OS disk</strong></p>
+<p>[azureuser@speeddemon ~]$ sudo yum -y install mysql-server</p>
+<p>[azureuser@speeddemon ~]$ mysqlslap --auto-generate-sql-load-type=update -a -c8 -y4 -x4 -i10 --number-of-queries=1000 --auto-generate-sql-write-number=1000 -auto-generate-sql-add-autoincrement -u root</p>
+<p><em>Benchmark</em><br />
+<em>        Average number of seconds to run all queries: 3.695 seconds</em><br />
+<em>        Minimum number of seconds to run all queries: 3.519 seconds</em><br />
+<em>        Maximum number of seconds to run all queries: 4.817 seconds</em><br />
+<em>        Number of clients running queries: 8</em><br />
+<em>        Average number of queries per client: 125</em></p>
+<p>&nbsp;</p>
+<p>[azureuser@speeddemon ~]$ mysqlslap --auto-generate-sql-load-type=update -a -c8 -y4 -x4 -i10 --number-of-queries=1000 --auto-generate-sql-write-number=1000 -auto-generate-sql-add-autoincrement -u root<br />
+Benchmark<br />
+Average number of seconds to run all queries: 3.608 seconds<br />
+Minimum number of seconds to run all queries: 3.504 seconds<br />
+Maximum number of seconds to run all queries: 4.191 seconds<br />
+Number of clients running queries: 8<br />
+Average number of queries per client: 125</p>
+<p><strong> <a href="http://stackoverflow.com/a/8595102" target="_blank">sudo fdisk -l</a> </strong></p>
+<p>&nbsp;</p>
+<p>[azureuser@speeddemon ~]$ dd if=/dev/zero of=/home/azureuser/ostest bs=64k count=1000 oflag=direct</p>
+<p><em>1000+0 records in</em><br />
+<em>1000+0 records out</em><br />
+<em>65536000 bytes (66 MB) copied, 3.32826 s, <strong>~27 MB/s (run multiple times and averaged)</strong></em></p>
+<p><strong>Checking a data disk (useto find an identifier for one)</strong></p>
+<p>[azureuser@speeddemon ~]$ sudo hdparm -tT /dev/sdc</p>
+<p><em>/dev/sdc:</em><br />
+<em> Timing cached reads: 5706 MB in 2.00 seconds = 2857.83 MB/sec</em><br />
+<em> Timing buffered disk reads: 110 MB in 3.02 seconds = 36.46 MB/sec</em></p>
+<h2>Setting up our RAID-0 array</h2>
+<p>If you're interested in the finer detail, check out <a href="http://www.dedoimedo.com/computers/linux-raid.html" target="_blank">this article</a> for a great explanation of RAID on linux. We'll be using RAID-0 (striping only) - given Azure Storage automatically gives us background redundancy, we don't need to use any of our disks to mirror copies of our data. Employing just striping does leave us vulnerable to outages caused by any of our disks becoming unavailable, so it's still wise to look into redundancy depending on your application (I'll be configuring a <a href="http://dev.mysql.com/doc/refman/5.6/en/replication-solutions-switch.html" target="_blank">second replicated MySQL server</a> later on for redundancy).</p>
+<p>Run the following command (checking that your disk identifiers match the ones below first):</p>
+<p>[azureuser@speeddemon ~]$ sudo mdadm --create --verbose /dev/md0 --level=raid0 --raid-devices=8 /dev/sdc /dev/sdd /dev/sde /dev/sdf /dev/sdg /dev/sdh /dev/sdi /dev/sdj</p>
+<p><em>mdadm: chunk size defaults to 512K</em><br />
+<em>mdadm: Defaulting to version 1.2 metadata</em><br />
+<em>mdadm: array /dev/md0 started.</em></p>
+<p>We now have a single storage device /dev/md0. The device is the size of all our data disks combined and has the ability to distribute read/writes across all drives. Now let's format it, and make sure it automatically mounts on startup:</p>
+<p>[azureuser@speeddemon ~]$ sudo mkfs.ext4 /dev/md0<br />
+<em><br />
+mke2fs 1.41.12 (17-May-2010)</em><br />
+<em>Filesystem label=</em><br />
+<em>OS type: Linux</em><br />
+<em>Block size=4096 (log=2)</em><br />
+<em>Fragment size=4096 (log=2)</em><br />
+<em>Stride=128 blocks, Stripe width=1024 blocks</em><br />
+<em>13107200 inodes, 52426752 blocks</em><br />
+<em>2621337 blocks (5.00%) reserved for the super user</em><br />
+<em>First data block=0</em><br />
+<em>Maximum filesystem blocks=4294967296</em><br />
+<em>1600 block groups</em><br />
+<em>32768 blocks per group, 32768 fragments per group</em><br />
+<em>8192 inodes per group</em><br />
+<em>Superblock backups stored on blocks:</em><br />
+<em> 32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208, 4096000, 7962624, 11239424, 20480000, 23887872</em></p>
+<p><em>Writing inode tables: done</em><br />
+<em>Creating journal (32768 blocks): done</em><br />
+<em>Writing superblocks and filesystem accounting information: done</em></p>
+<p><em>This filesystem will be automatically checked every 31 mounts or</em><br />
+<em>180 days, whichever comes first. Use tune2fs -c or -i to override.</em></p>
+<p>[azureuser@speeddemon ~]$ sudo mkdir /data</p>
+<p>[azureuser@speeddemon ~]$ echo "/dev/md0 /data ext4 noatime,rw 0 0" | sudo tee -a /etc/fstab</p>
+<p><em>/dev/md0 /data ext4 noatime,rw 0 0</em></p>
+<p>[azureuser@speeddemon ~]$ sudo mount -av</p>
+<p><em>/dev/sda1 on / type ext4 (rw)</em><br />
+<em>proc on /proc type proc (rw)</em><br />
+<em>sysfs on /sys type sysfs (rw)</em><br />
+<em>devpts on /dev/pts type devpts (rw,gid=5,mode=620)</em><br />
+<em>tmpfs on /dev/shm type tmpfs (rw,rootcontext="system_u:object_r:tmpfs_t:s0")</em><br />
+<em>none on /proc/sys/fs/binfmt_misc type binfmt_misc (rw)</em><br />
+<em>sunrpc on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw)</em><br />
+<em>/dev/sdb1 on /mnt/resource type ext4 (rw)</em><br />
+<strong><em>/dev/md0 on /data type ext4 (rw,noatime)</em></strong></p>
+<p>[azureuser@speeddemon ~]$ df -h</p>
+<p><em>Filesystem Size Used Avail Use% Mounted on</em><br />
+<em>/dev/sda1 29G 1.8G 26G 7% /<strong> (our OS disk)</strong></em><br />
+<em>tmpfs 3.4G 0 3.4G 0% /dev/shm</em><br />
+<em>/dev/sdb1 281G 191M 267G 1% /mnt/resource <strong>(temporary disk attached to the VM, wiped on reboot)</strong></em><br />
+<em>/dev/md0 197G 188M 187G 1% /data <strong>(our RAID-0 array of data disks)</strong></em></p>
+<p>Okay, looking good! Let's do a quick benchmark check to make sure we've nailed it:</p>
+<p>&nbsp;</p>

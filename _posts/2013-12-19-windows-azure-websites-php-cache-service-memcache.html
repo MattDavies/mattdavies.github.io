@@ -1,0 +1,39 @@
+---
+layout: post
+title: 'Windows Azure Websites PHP: Cache Service via Memcache'
+date: 2013-12-19 00:50:27.000000000 +08:00
+categories:
+- Azure
+- Memcached
+- PHP
+tags:
+- azure
+- memcached
+- php
+status: publish
+type: post
+published: true
+meta:
+  _edit_last: '1'
+  _su_rich_snippet_type: none
+  _social_aggregated_ids: a:2:{s:7:"twitter";a:0:{}s:8:"facebook";a:0:{}}
+  _social_aggregation_log: a:22:{i:1387388300;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387390814;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387393606;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387397502;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387404876;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387420305;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387449786;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387466392;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387468426;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387472386;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387476746;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387484683;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387498934;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387501067;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387503918;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387507871;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387515612;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387531120;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387560252;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387604094;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1387691486;O:8:"stdClass":2:{s:6:"manual";b:0;s:5:"items";a:0:{}}i:1387864522;O:8:"stdClass":2:{s:6:"manual";b:0;s:5:"items";a:0:{}}}
+  _wp_old_slug: windows-azure-websites-enabling-memcached-support
+  _su_title: 'Windows Azure Websites PHP: Cache Service via Memcache'
+  _su_description: You can connect to Azure Cache Service (still in the preview program)
+    using the memcache protocol.  I couldn't find much out there on how to enable
+    this PHP extension in Azure Websites, so I thought I'd write up the steps I followed.
+author:
+  login: admin
+  email: matt@mdavies.net
+  display_name: Matt
+  first_name: ''
+  last_name: ''
+---
+<p>I've been migrating a PHP application to Azure Websites which uses memcached extensively. You can connect to Azure Cache Service (still in the preview program) using the memcache protocol, effectively making the migration seamless from an application point of view. I couldn't find much out there on how to enable this PHP extension in Azure Websites, so I thought I'd write up the steps I followed. First, open up the configure tab of your Azure Website. Take special note below of your PHP version and platform - you'll need both to determine which version of the memcache extension</p>
+<p><a href="http://blog.mdavies.net/wp-content/uploads/sites/11/2013/12/websitesphpversion.png"><img class="alignnone size-full wp-image-591" alt="Check version and bitness" src="assets/websitesphpversion.png" width="462" height="509" /></a></p>
+<p>Based on the above, download the extension DLL from here - make sure you grab the NTS (non thread safe) version: <a href="http://pecl.php.net/package/memcache/3.0.8/windows">http://pecl.php.net/package/memcache/3.0.8/windows</a> You might also want to check this page to make sure you're grabbing the latest version available <a href="http://pecl.php.net/package/memcache">http://pecl.php.net/package/memcache</a> Your downloaded file should look something like this: php_memcache-3.0.8-PHP_VERSION-nts-vc9-PLATFORM.zip. Extract and upload the DLL to your site root using your chosen deployment method for the site (source control, dropbox, FTP etc). A fairly common recommendation is to place these PHP extensions in a folder called "bin", which automatically protects them from being downloaded by the outside world over HTTP. Scroll down on the configure tab until you see app settings. Here, we configure PHP to look for your extension DLL by adding a variable called PHP_EXTENSIONS and pointing it to your uploaded DLL:</p>
+<p><img class="alignnone size-full wp-image-601" alt="app settings php extensions" src="assets/phpextensions.png" width="874" height="194" /></p>
+<p>Save, and you should be good to go! You can verify this by creating a PHP file in your site with the following... &lt;?php phpinfo(); ?&gt; ...and then viewing that page in your browser:</p>
+<p><a style="line-height: 1.714285714; font-size: 1rem;" href="http://blog.mdavies.net/wp-content/uploads/sites/11/2013/12/memcacheresult.png"><img class="alignnone size-full wp-image-611" alt="memcache result" src="assets/memcacheresult.png" width="665" height="438" /></a></p>
+<p>A quick last tip - you can easily add multiple PHP extensions this way. In your PHP_EXTENSIONS app settings variable, just separate the DLL names by commas. I'll be following this post up with a way to do this for all your sites without needing to upload the DLL into each one individually. Have fun and good luck!</p>

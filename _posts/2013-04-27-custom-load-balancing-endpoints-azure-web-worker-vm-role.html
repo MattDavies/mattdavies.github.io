@@ -1,0 +1,65 @@
+---
+layout: post
+title: Custom Load Balancing Endpoints in an Azure Web/Worker/VM Role
+date: 2013-04-27 19:37:19.000000000 +08:00
+categories:
+- Azure
+tags:
+- azure
+- azure endpoint
+- load balancing
+status: publish
+type: post
+published: true
+meta:
+  _edit_last: '1'
+  _su_rich_snippet_type: none
+  _wp_old_slug: custom-load-balancing-endpoints-azure-role
+author:
+  login: admin
+  email: matt@mdavies.net
+  display_name: Matt
+  first_name: ''
+  last_name: ''
+---
+<p>Windows Azure Web, Worker and Virtual Machine roles provide an easy built-in way to customise health monitoring for a load balanced endpoint, allowing you to disable a single endpoint for a role without causing the entire role to recycle. This can be achieved through use of the <a href="http://msdn.microsoft.com/en-us/library/windowsazure/jj151530.aspx#LoadBalancerProbes">LoadBalancerProbes schema element</a>, which is <a href="http://msdn.microsoft.com/en-us/library/windowsazure/ff683673.aspx">available in Azure SDK 1.7+</a>.</p>
+<h2>Background</h2>
+<p>The Windows Azure Load Balancer running on the Azure Fabric Service acts as the default controller for determining how to route incoming network traffic to endpoints on your role instances. A default load balancer probe is provided that covers all endpoints for each role instance - this probe is high level and simply returns HTTP 200 OK if the role is in the Ready state (not Busy, Recycling, Stopping etc). If the response is not 200 OK, the load balancer stops all traffic being routed to that instance.</p>
+<p>Once the role instance starts returning HTTP 200 again, the load balancer resumes traffic flow. When running a standard web role, your code is usually contained in the <code>w3wp.exe</code> process which isn't actually monitored by the load balancer (so failures like your web application returning Internal Server Error 500 won't stop the role becoming unavailable).</p>
+<h2>Overriding the default probe</h2>
+<p>If you override the default probe for an endpoint, you can provide more complex, lower level logic for each individual endpoint in your service. Your probe is checked regularly (every 15 seconds by default) - if your probe responds with a HTTP 200 or TCP ACK within the timeout period (31 seconds by default) then the associated endpoint will have traffic routed to it as normal. If it starts returning any other HTTP codes or TCP messages, it will be removed from load balancing.</p>
+<h2>Usages</h2>
+<p>You can use this in multiple ways, for example:</p>
+<ol>
+<li>Ensuring only one instance of your role provides a selected endpoint at a time.</li>
+<li>Disabling an instance if one of your websites starts returning an unusually large number of HTTP errors for a specified URI.</li>
+<li>Removing a single endpoint from load balancer rotation if it becomes overloaded - for example, temporarily disabling new requests to port 80 on a web role if that instance becomes overloaded by a small number of unusually heavy requests (this would normally cause problems given the default load balancing is round robin).</li>
+<li>Disabling an endpoint when a custom service becomes unavailable, for example stopping requests to a virtual machine role database if the database is encountering issues (while still allowing requests to all  other services).</li>
+</ol>
+<h2>Gotchas</h2>
+<ul>
+<li>Overriding the built-in load balancing probe can mean that your replacement probe still returns 200 OK after a role has it's OnStop method() called. You should ensure your probe does the same as the built-in probe and begins returning a non-200 HTTP status code as soon as OnStop() is called.</li>
+</ul>
+<h2>Example .csdef schema</h2>
+<pre lang="xml" escaped="true">&lt;ServiceDefinition&gt;
+  &lt;LoadBalancerProbes&gt;
+    &lt;LoadBalancerProbe name="TestProbe" protocol="{http|tcp}" path="{uri-for-checking-health-status-of-vm}" port="{port-number}" intervalInSeconds="{interval-in-seconds}" timeoutInSeconds="{timeout-in-seconds}" /&gt;
+  &lt;/LoadBalancerProbes&gt;
+  &lt;WorkerRole&gt;
+  ...
+    &lt;Endpoints&gt;
+      &lt;InputEndpoint name="HttpIn" protocol="http" port="80" localPort="80" loadBalancerProbe="TestProbe" /&gt;
+    &lt;/Endpoints&gt;
+  ...
+  &lt;/WorkerRole&gt;
+&lt;/ServiceDefinition&gt;</pre>
+<p>For a real world example of when a LoadBalancerProbe might be useful, see <a href="http://blog.mdavies.net/2014/01/10/fixing-msdeploy-error-web-deployment-task-failed-root-element-missing/" target="_blank">this post</a>.</p>
+<h2>LoadBalancerProbe element attributes</h2>
+<ul>
+<li><code>name</code> - A unique identifier for this probe. Can be referenced by multiple endpoints.</li>
+<li><code>protocol</code> - HTTP or TCP. A 200 OK for HTTP or a TCP ACK for TCP means the endpoint should be kept available. All other responses indicate to the Fabric Controller that it should take this endpoint out of load balancing rotation.</li>
+<li><code>path</code> - Required for HTTP protocols to specify the URI used for health checking.</li>
+<li><code>port</code> - The port number to be used for checking availability. Defaults to the same port number as the endpoint.</li>
+<li><code>intervalInSeconds</code> - How frequently (in seconds) to make availability checking requests.</li>
+<li><code>timeoutInSeconds</code> - A number of seconds after which, if no success response is received by the availability checks, the endpoint will be removed from the load balancing rotation. A good recommended value is twice that of <code>intervalInSeconds</code>, allowing two full failed requests before disabling traffic to the associated endpoint.</li>
+</ul>

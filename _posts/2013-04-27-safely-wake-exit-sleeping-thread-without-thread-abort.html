@@ -1,0 +1,119 @@
+---
+layout: post
+title: Safely wake and exit a sleeping C# thread without Thread.Abort()
+date: 2013-04-27 23:22:50.000000000 +08:00
+categories:
+- General C#
+tags:
+- C#
+- Thread
+- TPL
+status: publish
+type: post
+published: true
+meta:
+  _edit_last: '1'
+  _su_rich_snippet_type: none
+  _wp_old_slug: safely-wake-exit-sleeping-thread-csharp
+author:
+  login: admin
+  email: matt@mdavies.net
+  display_name: Matt
+  first_name: ''
+  last_name: ''
+---
+<p>As covered in numerous other posts, <a href="http://msdn.microsoft.com/en-us/library/5b50fdsz(v=vs.100).aspx">Thread.Abort()</a> is a dangerous approach to exiting a thread and can have many unintended consequences that are difficult to track down.</p>
+<p>In <a href="https://github.com/robdmoore/AzureWebFarm">Azure Web Farm</a>, I ran into a situation where on a role stopping, I needed to safely terminate multiple running threads (some of which had regular Thread.Sleep() calls in between processing loops).</p>
+<p>You can solve this problem using the amazing <a href="http://msdn.microsoft.com/en-us/library/dd460717(v=vs.100).aspx">Task Parallel Library</a> in combination with <a href="http://msdn.microsoft.com/en-AU/library/dd997289(v=vs.100).aspx">Cancellation Tokens</a> and <a href="http://msdn.microsoft.com/en-us/library/system.threading.waithandle(v=vs.100).aspx">Wait Handles</a>. There are definitely many other ways to do this - I'll first demo two solutions that aren't as safe and explain why.</p>
+<h2>Option 1 - Thread.Abort()</h2>
+<p>The following is an example of solving this problem with Thread.Abort() - simple, but can cause unintended side effects in other areas of your application:</p>
+<pre><code>private readonly Thread _thread;
+
+public void Start()
+{
+    _thread = new Thread(() =&gt;
+    {
+        while (true)
+        {
+            // Perform check or processing
+
+            Thread.Sleep(TimeSpan.FromSeconds(10));
+        }
+    });
+}
+
+public void Stop()
+{
+    _thread.Abort();
+}
+</code></pre>
+<h2>Option 2 - TPL with Monitor Sync</h2>
+<p>To improve upon aborting the thread directly, we can wake up the thread in the middle of Thread.Sleep() and safely end it using TPL and Locks:</p>
+<pre><code>private CancellationTokenSource _cancellationTokenSource;
+private readonly object _lockObject = new object();
+
+public void Start()
+{
+    // Create a new Cancellation Token Source - this contains a shared object used to pass a cancel message to TPL
+    _cancellationTokenSource = new CancellationTokenSource();
+    Task.Factory.StartNew(() =&gt;
+    {
+        while (true)
+        {
+            // Perform check or processing
+
+            lock (_lockObject)
+            {
+                // Same as a Thread.Sleep(), but it will wake up if signalled by Monitor.Pulse()
+                Monitor.Wait(_lockObject, TimeSpan.FromSeconds(10));
+                // After 10 seconds have passed or we have been signalled, check the Cancellation Token
+                if (_cancellationTokenSource.Token.IsCancellationRequested)
+                    return;
+            }
+        }
+    }, _cancellationTokenSource.Token);
+}
+
+public void Stop()
+{
+    // Set the Cancellation Token status to Cancelled
+    _cancellationTokenSource.Cancel();
+    // Wake up the running thread if it is currently sleeping in a Monitor.Wait()
+    lock (_lockObject)
+    {
+        Monitor.Pulse(_lockObject);
+    }
+}
+</code></pre>
+<h2>Option 3 - TPL with Reset Events (Safest solution I can find)</h2>
+<p>The above solution is a definite improvement, but Monitor pulses can be lost between threads in certain race conditions (see <a href="http://stackoverflow.com/a/1355415/878130">This excellent StackOverflow post</a> for more detail). A safer alternative is therefore to use reset events, at the potential cost of slightly lower performance than locking. See the final solution below:</p>
+<pre><code>private CancellationTokenSource _cancellationTokenSource;
+private ManualResetEvent _resetEvent;
+
+public void Start()
+{
+    _cancellationTokenSource = new CancellationTokenSource();
+    // Set up a signal object in a default false state, to be used for waking up the Start() thread if sleeping
+    _resetEvent = new ManualResetEvent(false);
+
+    Task.Factory.StartNew(() =&gt;
+    {
+        while (true)
+        {
+            // Perform check or processing
+
+            _resetEvent.WaitOne(TimeSpan.FromSeconds(10));
+            if (_cancellationTokenSource.Token.IsCancellationRequested)
+                return;
+        }
+    }, _cancellationTokenSource.Token);
+}
+
+public void Stop()
+{
+    // First set the cancellation token to Cancelled
+    _cancellationTokenSource.Cancel();
+    // Now wake up the Start() thread if it is currently sleeping
+    _resetEvent.Set();
+}
+</code></pre>

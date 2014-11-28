@@ -1,0 +1,120 @@
+---
+layout: post
+title: 'Microsoft''s hidden gem: MSDeploy'
+date: 2012-08-12 00:58:09.000000000 +08:00
+tags:
+- azure
+- msdeploy
+- powershell
+- teamcity
+- web deploy
+status: publish
+type: post
+published: true
+meta:
+  _edit_last: '1'
+  _su_rich_snippet_type: none
+  _su_title: 'Microsoft''s hidden gem: MSDeploy'
+  _su_description: Introduction to MSDeploy - where to find good documentation on
+    available providers/commands and some example usage of runCommand with powershell
+    scripts.
+  _su_disable_autolinks: '1'
+  _su_og_title: 'Microsoft''s hidden gem: MSDeploy'
+  _su_og_description: Introduction to MSDeploy - where to find good documentation
+    on available providers/commands and some example usage of runCommand with powershell
+    scripts.
+  _su_og_type: blog
+  _su_twitter_card: summary
+author:
+  login: admin
+  email: matt@mdavies.net
+  display_name: Matt
+  first_name: ''
+  last_name: ''
+---
+<p><a href="http://technet.microsoft.com/en-us/library/dd568996%28WS.10%29.aspx" target="_blank">MSDeploy</a> will be central to many of the posts in this series. MSDeploy is the tool behind the scenes in <a href="http://www.iis.net/download/WebDeploy" target="_blank">Web Deploy</a>, but can do much more than deploying IIS sites through it's provider extensions. We've used it's powerful command execution and file syncing functionality for:</p>
+<ul>
+<li>Deployments to Windows Azure Roles</li>
+<li>Deployments of on-premise <a href="http://topshelf-project.com/documentation/getting-started/" target="_blank">Topshelf</a> services</li>
+<li>Deployments to on-premise .NET web farms and off-premise Windows Azure web farms</li>
+<li>Automatic creation of IIS websites</li>
+</ul>
+<h2>Maintainable, large-scale continuous delivery with TeamCity series</h2>
+<p>This post is part of a blog series jointly written by myself and <a href="http://robdmoore.id.au/" target="_blank">Rob Moore</a> called Maintainable, large-scale continuous delivery with TeamCity:</p>
+<p>This post outlines how using OctopusDeploy for deployments can fit into a TeamCity continuous delivery deployment pipeline.</p>
+<h2>Maintainable, large-scale continuous delivery with TeamCity series</h2>
+<p>This post is part of a blog series jointly written by myself and <a href="http://blog.mdavies.net/" target="_blank">Matt Davies</a> called Maintainable, large-scale continuous delivery with TeamCity:</p>
+<ol>
+<li><a href="http://robdmoore.id.au/blog/2012/08/12/maintainable-large-scale-continuous-delivery-with-teamcity/">Intro</a></li>
+<li>TeamCity deployment pipeline
+<ul>
+<li><a href="http://robdmoore.id.au/blog/2012/09/01/maintainable-teamcity-continuous-deployment-pipeline-configuration/">TeamCity deployment pipeline (part 1: structure)</a></li>
+<li><a href="http://blog.mdavies.net/2014/04/21/teamcity-deployment-pipeline-part-2-teamcity-8-build-once-and-ui-tests/">TeamCity deployment pipeline (part 2: TeamCity 8, build once and UI tests)</a></li>
+<li><a href="http://robdmoore.id.au/blog/2014/04/21/teamcity-deployment-pipeline-part-3-using-octopusdeploy-for-deployments/">TeamCity deployment pipeline (part 3: using OctopusDeploy for deployments)</a></li>
+</ul>
+</li>
+<li>Deploying Web Applications
+<ul>
+<li>MsDeploy (onprem and Azure Web Sites)</li>
+<li>OctopusDeploy (nuget)</li>
+<li>Git push (Windows Azure Web Sites)</li>
+</ul>
+</li>
+<li>Deploying Windows Services
+<ul>
+<li>MsDeploy</li>
+<li>OctopusDeploy</li>
+<li>Git push (Windows Azure Web Sites Web Jobs)</li>
+</ul>
+</li>
+<li>Deploying Windows Azure Cloud Services
+<ul>
+<li>OctopusDeploy</li>
+<li>PowerShell</li>
+</ul>
+</li>
+<li>How to choose your deployment technology
+<ul>
+<li><a href="http://blog.mdavies.net/2012/08/12/microsofts-hidden-gem-msdeploy/" target="_blank">Microsoft&#8217;s hidden gem: MSDeploy</a></li>
+</ul>
+</li>
+</ol>
+<h2>Documentation</h2>
+<p>Some of the official documentation on the more advanced commands is not clear and doesn't warn you about some of the pitfalls that you can run into. Some good introductory links:</p>
+<p><a href="http://raquila.com/software/ms-deploy-basics/" target="_blank">http://raquila.com/software/ms-deploy-basics/</a> (well organised post on the options and commands available)</p>
+<p><a href="http://blog.torresdal.net/2010/08/16/no-click-web-deployment-part-2-web-deploy-a-k-a-msdeploy/" target="_blank">http://blog.torresdal.net/2010/08/16/no-click-web-deployment-part-2-web-deploy-a-k-a-msdeploy/</a> (good for an extremely comprehensive listing of the various options available)</p>
+<p>I've also linked to several posts below with information more targeted to specific msdeploy options and commands which are somewhat under-documented.</p>
+<h2>Our frequently used providers/options</h2>
+<p>We use the <a href="http://technet.microsoft.com/en-us/library/ee619740(v=ws.10).aspx" target="_blank">runCommand</a> provider for remotely executing powershell scripts:</p>
+<p><strong>-presync:runCommand</strong></p>
+<p><strong>-postsync:runCommand</strong></p>
+<p><strong>-source:runCommand</strong></p>
+<p>Other useful commands/options:</p>
+<p><strong> -useCheckSum</strong></p>
+<p>As the name implies, uses checksums to determine which files to sync as opposed to timestamps. In a continuous integration environment where every file is updated upon each build, this flag improves the speed of build times (and has helped us overcome locking issues with some unmanaged DLLs which are never updated).</p>
+<p><strong>-allowUntrusted</strong></p>
+<p>Useful if you trust your network and target msdeploy server (avoids certificate validation issues during deployment).</p>
+<h2>Powershell scripts and MSDeploy</h2>
+<p>Example teamcity parameters list for an msdeploy command line step:</p>
+<p><strong></strong>-postSyncOnSuccess:runCommand='"powershell.exe -<strong>ExecutionPolicy ByPass</strong> <strong>-InputFormat None -NonInteractive</strong> -File C:msbuild_scriptstopshelf_deploy_postsync.ps1 -serviceAssemblyName %env.DeployServiceName% -environment %env.Env% -servicesPath %DeployTopshelfPath%"',<strong>waitInterval=600000</strong></p>
+<p>In the above powershell command:</p>
+<ul>
+<li><span style="text-decoration: underline;">ExecutionPolicy ByPass</span> ensures powershell commands can be executed on systems where this is restricted by default (ie Windows Server 2008). See <a href="http://eddielublog.blogspot.com.au/2011/11/windows-powershell-v.html">this post</a> and the <a href="http://technet.microsoft.com/en-us/library/ee176961.aspx">official documentation</a> to learn more about this option.</li>
+<li><span style="text-decoration: underline;">InputFormat None</span> is a little known option which overcomes an issue where msdeploy commands will hang if stdin is redirected (as is the case with msdeploy). See <a href="http://connect.microsoft.com/PowerShell/feedback/details/572313/powershell-exe-can-hang-if-stdin-is-redirected">this bug report</a> for more information and <a href="http://wishmesh.com/2011/08/microsofts-powershell-hangs-when-output-is-captured-using-windows-api/">this blog post</a> for the fix.</li>
+<li><span style="text-decoration: underline;">NonInteractive</span> is another sparsely documented powershell option which ensures msdeploy can display the output from the powershell script.</li>
+<li><span style="text-decoration: underline;">waitInterval</span> in an msdeploy option for runCommand which ensures the script waits a sufficient amount of time before giving up (the default value is only <a href="http://technet.microsoft.com/fr-fr/library/ee619740(v=ws.10)#sectionSection1" target="_blank">one second</a> which is not long enough for some of our more complex powershell scripts.</li>
+</ul>
+<h2>Error handling in powershell</h2>
+<p>Our error handling process for powershell scripts executed via msdeploy is best described in the following posts: <a href="http://blogs.technet.com/b/heyscriptingguy/archive/2011/05/12/powershell-error-handling-and-why-you-should-care.aspx" target="_blank">Powershell error handling and why you should care</a> and <a href="http://blog.usepowershell.com/category/deep-dive/error-handling/" target="_blank">Caught in a trap - dealing with errors</a>. TeamCity is set up to fail a deployment build if the following text is detected from the msdeploy output: "exited with code '0x1'". We can ensure powershell scripts exit with that error by organising scripts with the following structure:</p>
+<pre>$ErrorActionPreference = "Stop"
+
+try
+{
+    eventcreate /ID 1 /L APPLICATION /T INFORMATION /SO $websiteName /D "A deployment of $websiteName started"
+}
+catch
+{
+    write-error $_
+    exit 1
+}</pre>
+<p>If you're interested in reading more about msdeploy, you should check out <a href="http://blog.richardszalay.com/tag/msdeploy/">Richard Szalay</a>'s posts on msdeploy - I've learnt a lot from them before!</p>

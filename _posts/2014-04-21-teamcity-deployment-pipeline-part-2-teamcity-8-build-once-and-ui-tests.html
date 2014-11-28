@@ -1,0 +1,122 @@
+---
+layout: post
+title: 'TeamCity deployment pipeline (part 2: TeamCity 8, Build once and UI tests)'
+date: 2014-04-21 13:31:27.000000000 +08:00
+categories:
+- Continuous Delivery Series
+tags: []
+status: publish
+type: post
+published: true
+meta:
+  _edit_last: '1'
+  ac_featured_article: ''
+  ac_show_post_thumbnail: ''
+author:
+  login: admin
+  email: matt@mdavies.net
+  display_name: Matt
+  first_name: ''
+  last_name: ''
+---
+<p>The <a href="http://robdmoore.id.au/blog/2012/09/01/maintainable-teamcity-continuous-deployment-pipeline-configuration/" rel="noreferrer">last post</a> in this series covers a range of techniques for using TeamCity to build a continuous delivery deployment pipeline in a scalable way. This post builds on those techniques by providing some more options to consider given the new features in TeamCity 8 as well as what we've learnt since the original post.</p>
+<h2><a href="https://gist.github.com/robdmoore/def851e8a10319b19251#maintainable-large-scale-continuous-delivery-with-teamcity-series" rel="noreferrer" name="user-content-maintainable-large-scale-continuous-delivery-with-teamcity-series"></a>Maintainable, large-scale continuous delivery with TeamCity series</h2>
+<p>This post is part of a blog series jointly written by myself and Matt Davies called Maintainable, large-scale continuous delivery with TeamCity:</p>
+<ol>
+<li><a href="http://robdmoore.id.au/blog/2012/08/12/maintainable-large-scale-continuous-delivery-with-teamcity/">Intro</a></li>
+<li>TeamCity deployment pipeline
+<ul>
+<li><a href="http://robdmoore.id.au/blog/2012/09/01/maintainable-teamcity-continuous-deployment-pipeline-configuration/">TeamCity deployment pipeline (part 1: structure)</a></li>
+<li><a href="http://blog.mdavies.net/2014/04/21/teamcity-deployment-pipeline-part-2-teamcity-8-build-once-and-ui-tests/">TeamCity deployment pipeline (part 2: TeamCity 8, build once and UI tests)</a></li>
+<li><a href="http://robdmoore.id.au/blog/2014/04/21/teamcity-deployment-pipeline-part-3-using-octopusdeploy-for-deployments/">TeamCity deployment pipeline (part 3: using OctopusDeploy for deployments)</a></li>
+</ul>
+</li>
+<li>Deploying Web Applications
+<ul>
+<li>MsDeploy (onprem and Azure Web Sites)</li>
+<li>OctopusDeploy (nuget)</li>
+<li>Git push (Windows Azure Web Sites)</li>
+</ul>
+</li>
+<li>Deploying Windows Services
+<ul>
+<li>MsDeploy</li>
+<li>OctopusDeploy</li>
+<li>Git push (Windows Azure Web Sites Web Jobs)</li>
+</ul>
+</li>
+<li>Deploying Windows Azure Cloud Services
+<ul>
+<li>OctopusDeploy</li>
+<li>PowerShell</li>
+</ul>
+</li>
+<li>How to choose your deployment technology
+<ul>
+<li><a href="http://blog.mdavies.net/2012/08/12/microsofts-hidden-gem-msdeploy/" target="_blank">Microsoft&#8217;s hidden gem: MSDeploy</a></li>
+</ul>
+</li>
+</ol>
+<h2><a href="https://gist.github.com/robdmoore/def851e8a10319b19251#teamcity-8-and-some-other-goodness-we-missed-last-time-around" rel="noreferrer" name="user-content-teamcity-8-and-some-other-goodness-we-missed-last-time-around"></a>TeamCity 8 (and some other goodness we missed last time around)</h2>
+<p>Following is a bunch of (mostly new) TeamCity features we didn't cover in the last post that we think are useful to know if you are looking after a large-scale TeamCity deployment.</p>
+<h3><a href="https://gist.github.com/robdmoore/def851e8a10319b19251#project-groupings" rel="noreferrer" name="user-content-project-groupings"></a>Project groupings</h3>
+<p>One of the big improvements in Teamcity 8 is the addition of <a href="http://confluence.jetbrains.com/display/TCD8/What's+New+in+TeamCity+8.0#What%27sNewinTeamCity8.0-ProjectsHierarchy" rel="noreferrer">Projects Hierarchy</a>, which allows you to nest projects. In a large-scale TeamCity deployment this is probably very useful:</p>
+<ul>
+<li>You can group related projects e.g. per-client, per-team, per-department etc.</li>
+<li>If you follow our advice in the <a href="http://robdmoore.id.au/blog/2012/09/01/maintainable-teamcity-continuous-deployment-pipeline-configuration/" rel="noreferrer">last post</a> about splitting up production deployments to a separate project (if you need to have different permissions) then you can group the prod and non-prod projects together</li>
+</ul>
+<p>As well as a logical grouping, project hierarchy gives you the ability to <a href="http://confluence.jetbrains.com/display/TCD8/Project" rel="noreferrer">share the following</a>:</p>
+<ul>
+<li>Build configuration parameters and templates</li>
+<li>Clean-up rules</li>
+<li>VCS Roots</li>
+<li>Users and group roles</li>
+<li>Shared resources</li>
+<li>Meta-runners</li>
+</ul>
+<h3><a href="https://gist.github.com/robdmoore/def851e8a10319b19251#pull-requests" rel="noreferrer" name="user-content-pull-requests"></a>Pull requests</h3>
+<p>Rob has written before about the importance of using <a href="http://robdmoore.id.au/blog/2013/12/01/using-pull-requests-for-commercialprivateproprietary-development/" rel="noreferrer">pull requests for commercial software development</a>. One of the really cool things in TeamCity is the ability to <a href="http://blog.jetbrains.com/teamcity/2013/02/automatically-building-pull-requests-from-github-with-teamcity/" rel="noreferrer">automatically build pull requests</a> and then to report back their status via <a href="http://confluence.jetbrains.com/display/TW/TeamCity+Plugins#TeamCityPlugins-Miscellaneous" rel="noreferrer">one of a number of plugins</a> (if using <a href="https://github.com/jonnyzzz/TeamCity.GitHub" rel="noreferrer">GitHub</a>, <a href="https://github.com/ArcBees/teamcity-plugins/wiki/Configuring-Bitbucket-Pull-Requests-Plugin" rel="noreferrer">BitBucket</a>, <a href="http://code.mendhak.com/teamcity-stash/" rel="noreferrer">Stash</a>). You can see more about how to do this in the excellent post by <a href="http://www.mehdi-khalili.com/continuous-integration-delivery-github-teamcity" rel="noreferrer">Mehdi Khalili</a>.</p>
+<h3><a href="https://gist.github.com/robdmoore/def851e8a10319b19251#versioning" rel="noreferrer" name="user-content-versioning"></a>Versioning</h3>
+<p>Semantic Versioning is really useful for software libraries because it helps communicate the scope of a change to the users of that library. <a href="http://jake.ginnivan.net/" rel="noreferrer">Jake Ginnivan</a> has talked to us before about using semver for commercial projects to communicate the status of a build to the client e.g. major revision can be used for a <strong>large</strong> change / feature / rewrite, a minor revision can be used for a new feature and a patch can be used for bug fixes or small changes to an existing feature. If you want to use custom versioning with TeamCity then it actually provides you with the ability to <a href="http://confluence.jetbrains.com/display/TCD8/Build+Script+Interaction+with+TeamCity#BuildScriptInteractionwithTeamCity-ReportingBuildNumber" rel="noreferrer">dynamically change the build number</a> to help accommodate this.</p>
+<p>If you are using Git for your source control, then you are in luck because Jake Ginnivan has created a continuous delivery compatible way of using semver with TeamCity via the <a href="https://github.com/JakeGinnivan/GitHubFlowVersion" rel="noreferrer">GitHubFlowVersion project</a> (note: it's currently in the stages of being merged into the <a href="https://github.com/Particular/GitVersion" rel="noreferrer">GitVersion</a> project). It's important to note that you can no longer use the Assembly Info Patcher Build Feature when using GitHubFlowVersion, but it has the ability to patch the assemblies for you.</p>
+<h3><a href="https://gist.github.com/robdmoore/def851e8a10319b19251#sharing-versions-across-dependent-build-configurations" rel="noreferrer" name="user-content-sharing-versions-across-dependent-build-configurations"></a>Sharing versions across dependent build configurations</h3>
+<p>In the <a href="http://robdmoore.id.au/blog/2012/09/01/maintainable-teamcity-continuous-deployment-pipeline-configuration/" rel="noreferrer">last post</a> we discussed the disadvantage of not having the build number propagate to each of the consequential build configurations and provided a number of links to potential solutions. We have since discovered a way of sharing versions between build configurations that share a dependency. You can simply put in <code>%dep.&lt;DEPENDENT_BUILD_CONFIG_ID&gt;.system.build.number%</code> where <code>&lt;DEPENDENT_BUILD_CONFIG_ID&gt;</code> is the id of the build configuration you want to use the build number from (note: it must have a snapshot dependency for you to be able to reference it). TeamCity 8 makes this much easier since you can specify the build configuration ID and the auto-completion of dependent variable names works a lot better.</p>
+<h3><a href="https://gist.github.com/robdmoore/def851e8a10319b19251#meta-runners" rel="noreferrer" name="user-content-meta-runners"></a>Meta-runners</h3>
+<p>If you find you need multiple build templates and these templates all repeat two or more build configuration steps or a single complex build configuration step then you can extract the common step(s) into a <a href="http://confluence.jetbrains.com/display/TCD8/What's+New+in+TeamCity+8.0#What%27sNewinTeamCity8.0-MetaRunner" rel="noreferrer">meta-runner</a>. For an example of a Meta Runner check out the <a href="https://github.com/JetBrains/meta-runner-power-pack" rel="noreferrer">TeamCity Meta-runner power pack</a> and the recent post by <a href="http://robdmoore.id.au/blog/2014/03/22/githubflowversion-teamcity-metarunner/" rel="noreferrer">Rob</a>.</p>
+<h3><a href="https://gist.github.com/robdmoore/def851e8a10319b19251#disk-usage-report" rel="noreferrer" name="user-content-disk-usage-report"></a>Disk usage report</h3>
+<p>When you are administrating a large scale TeamCity deployment in a limited resource environment you may find you need to quickly monitor where your hard disk space is being allocated. One of the new features in TeamCity 8 that can help in this situation is the <a href="http://confluence.jetbrains.com/display/TCD8/What's+New+in+TeamCity+8.0#What%27sNewinTeamCity8.0-DiskUsageReport" rel="noreferrer">disk usage report</a>. You should also keep in mind the <a href="http://confluence.jetbrains.com/display/TCD8/Clean-Up" rel="noreferrer">clean-up configuration options</a> available to you.</p>
+<h3><a href="https://gist.github.com/robdmoore/def851e8a10319b19251#shared-resources" rel="noreferrer" name="user-content-shared-resources"></a>Shared resources</h3>
+<p>If you have a large TeamCity deployment then it's likely some of your builds may depend on limited external resources such as test databases, metered resources etc. If this applies to you then you may want to look into TeamCity 8's <a href="http://confluence.jetbrains.com/display/TCD8/What's+New+in+TeamCity+8.0#What%27sNewinTeamCity8.0-SharedResources" rel="noreferrer">shared resources</a> feature which allows you to limit the number of builds using these shared resources at any point in time.</p>
+<h3><a href="https://gist.github.com/robdmoore/def851e8a10319b19251#queued-build-page" rel="noreferrer" name="user-content-queued-build-page"></a>Queued build page</h3>
+<p>If you find you have a lot of contention for your build agents you can take advantage of a new feature in TeamCity 8 which allows you to <a href="http://confluence.jetbrains.com/display/TCD8/What's+New+in+TeamCity+8.0#What%27sNewinTeamCity8.0-QueuedBuildPage" rel="noreferrer">monitor all current builds</a> queued and running on the server.</p>
+<h3><a href="https://gist.github.com/robdmoore/def851e8a10319b19251#nuget-server" rel="noreferrer" name="user-content-nuget-server"></a>NuGet server</h3>
+<p>TeamCity simplifies using custom NuGet packages for your own libraries and products by providing a built-in NuGet server (introduced in TeamCity 7) which integrates with package artifacts generated by a build configuration. This feature is incredibly useful for large scale deployments where you have shared code between projects and you are using <a href="http://jamesheppinstall.wordpress.com/2012/05/15/dependency-management-in-net-with-nuget-and-teamcity/" rel="noreferrer">NuGet to manage</a> your inter-project dependencies.</p>
+<h2><a href="https://gist.github.com/robdmoore/def851e8a10319b19251#build-once" rel="noreferrer" name="user-content-build-once"></a>Build once</h2>
+<p>An important philosophy in Continuous Delivery is to make sure that your application is <a href="http://earlyandoften.wordpress.com/2010/09/09/build-once-deploy-many/" rel="noreferrer">compiled once only</a> and those same binaries are reused for every subsequent part of the deployment pipeline. This gives confidence that you are deploying the same code that has been tested and deployed earlier in the pipeline and form a part of the confidence that a proper deployment pipeline gives you.</p>
+<p>One of the weaknesses in our <a href="http://robdmoore.id.au/blog/2012/09/01/maintainable-teamcity-continuous-deployment-pipeline-configuration/" rel="noreferrer">last post</a> was that the code could be rebuilt across build configurations if there is more than one agent (or MSBuild decided it wanted to rebuild). This was correctly pointed out in the comments by Marcin.</p>
+<p>We have experimented with tweaking the pipeline to get build once and we have three main options we have explored:</p>
+<ul>
+<li>Ensure you have one agent only and trust MSBuild to not rebuild if the files haven't changed (aka the last post)</li>
+<li>Rather than using Web Deploy to perform the XDT transformation for each environment, create the MSDeploy package while building (using <code>/p:DeployOnBuild=true</code>), put that package as an artifact, populate the package to deployment steps as an artifact dependency and then use the parameters functionality in MSDeploy to perform environment transformations at deploy time:
+<ul>
+<li><a href="http://www.asp.net/web-forms/tutorials/deployment/web-deployment-in-the-enterprise/configuring-parameters-for-web-package-deployment" rel="noreferrer">http://www.asp.net/web-forms/tutorials/deployment/web-deployment-in-the-enterprise/configuring-parameters-for-web-package-deployment</a></li>
+<li><a href="http://vishaljoshi.blogspot.com.au/2010/07/web-deploy-parameterization-in-action.html" rel="noreferrer">http://vishaljoshi.blogspot.com.au/2010/07/web-deploy-parameterization-in-action.html</a></li>
+<li><a href="http://technet.microsoft.com/en-us/library/dd569084(v=ws.10).aspx" rel="noreferrer">http://technet.microsoft.com/en-us/library/dd569084(v=ws.10).aspx</a></li>
+</ul>
+</li>
+<li>Use OctopusDeploy, which supports deploy-time configuration changes (see the next post in the series)</li>
+</ul>
+<h2><a href="https://gist.github.com/robdmoore/def851e8a10319b19251#octopusdeploy" rel="noreferrer" name="user-content-octopusdeploy"></a><span style="font-size: 1.285714286rem; line-height: 1.6;">UI Tests</span></h2>
+<p>One thing that wasn't mentioned in the previous post about TeamCity pipelines was running UI Tests. Since that post we have done a lot of work with integrating automated UI tests as part of our TeamCity pipelines. Providing guidance about running automated UI testing in TeamCity is a post in itself, but here are a few pointers to get you started:</p>
+<ul>
+<li>Consider what point in the pipeline you want to run your UI tests e.g. alongside your unit tests, after automatically deploying to your first environment after unit tests, after deploying to a test environment to provide more confidence before hitting prod, after deploying to a dedicated (static or on the fly) UI testing environment</li>
+<li>Remember that UI tests are generally slow so preferably you want to run it out of band of your first build configuration with unit tests</li>
+<li>If possible include a separate TeamCity agent that is dedicated for running UI tests so your continuous integration builds don't get delayed and you increase your immediate feedback loop</li>
+<li>Consider whether you want to run UI tests against all pull requests or not (on one hand you get a lot of confidence, on the other it takes a lot more time and requires isolated environments, which may be more complex</li>
+<li>Configure your agent machines so they <a href="http://jake.ginnivan.net/teamcity-ui-test-agent/" rel="noreferrer">are configured to be able to run the automated UI tests if you need interactive mode</a>; note: if you are using <a href="http://phantomjs.org/" rel="noreferrer">PhantomJS</a> then you might not need the agent to have interactive mode</li>
+<li>Make sure that you take screenshots whenever your UI tests fail and that the artifacts are dropped in a directory that is configured in your build configuration to pick up all files as artifacts
+<ul>
+<li>Make sure you clear that directory before every build otherwise the screenshots will start stacking up from previous builds - TeamCity has an option for this</li>
+</ul>
+</li>
+</ul>

@@ -1,0 +1,46 @@
+---
+layout: post
+title: 'Azure Websites: Converting .htaccess rewrite rules to the IIS web.config format'
+date: 2013-05-25 17:31:06.000000000 +08:00
+categories:
+- Azure
+- IIS
+- PHP
+tags:
+- azure
+- htaccess
+- iis
+- php
+- web.config
+status: publish
+type: post
+published: true
+meta:
+  _edit_last: '1'
+  _su_rich_snippet_type: none
+  _wp_old_slug: azure-websites-htaccess-rewrite-web-confi
+  _social_aggregated_ids: a:2:{s:7:"twitter";a:0:{}s:8:"facebook";a:0:{}}
+  _social_aggregation_log: a:21:{i:1369475695;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1369478235;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1369480078;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1369484140;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1369488195;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1369495441;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1369510588;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1369539452;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1369582769;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1369669379;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1369843773;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1388066702;O:8:"stdClass":2:{s:6:"manual";b:0;s:5:"items";a:0:{}}i:1388068700;O:8:"stdClass":2:{s:6:"manual";b:0;s:5:"items";a:0:{}}i:1388072229;O:8:"stdClass":2:{s:6:"manual";b:0;s:5:"items";a:0:{}}i:1388076008;O:8:"stdClass":2:{s:6:"manual";b:0;s:5:"items";a:0:{}}i:1388083940;O:8:"stdClass":2:{s:6:"manual";b:0;s:5:"items";a:0:{}}i:1388098409;O:8:"stdClass":2:{s:6:"manual";b:0;s:5:"items";a:0:{}}i:1388127237;O:8:"stdClass":2:{s:6:"manual";b:0;s:5:"items";a:0:{}}i:1388170536;O:8:"stdClass":2:{s:6:"manual";b:0;s:5:"items";a:0:{}}i:1388257962;O:8:"stdClass":2:{s:6:"manual";b:0;s:5:"items";a:0:{}}i:1388431471;O:8:"stdClass":2:{s:6:"manual";b:0;s:5:"items";a:0:{}}}
+author:
+  login: admin
+  email: matt@mdavies.net
+  display_name: Matt
+  first_name: ''
+  last_name: ''
+---
+<p>Increasingly when using <a href="http://www.windowsazure.com/en-us/develop/php/common-tasks/create-a-php-web-site/">Azure Websites</a>, I'm finding the need to convert .htaccess files provided with PHP websites into web.config files that Azure/IIS understand.</p>
+<p>A quick helpful tip, IIS can do this for you (after installing the <a href="http://www.iis.net/downloads/microsoft/url-rewrite" target="_blank">URL Rewrite extension</a>):</p>
+<p>1) Open the IIS Management Console on your local machine. <img alt="Step 1" src="assets/HT-Step1-1024x705.jpg" /></p>
+<p>2) Open the URL Rewrite section under Default Web Site (or any other Site). <img alt="Step 2" src="assets/HT-Step2-1024x705.jpg" /></p>
+<p>3) Click on Import Rules... on the right menu. <img alt="Step 3" src="assets/HT-Step3-1024x705.jpg" /></p>
+<p>4) Paste the contents of your .htaccess file into the Rewrite Rules field. <img alt="Step 4" src="assets/HT-Step4-1024x705.jpg" /></p>
+<p>5) Create a new web.config file using the following template, filling in the rules with the XML from the XML View.</p>
+<pre lang="xml" escaped="true" line="1">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;configuration&gt;
+  &lt;system.webServer&gt;
+    &lt;!-- Paste rules from XML View here --&gt;
+  &lt;/system.webServer&gt;
+&lt;/configuration&gt;
+</pre>
+<p>6) Upload this web.config file to the root folder of your Azure Websites PHP site.</p>
+<p>You may see warnings when doing the conversion - it's worth checking these manually before using the generated web.config rules. A common example is that RewriteBase is unsupported - IIS treats this a little differently and infers the base URL from the location of the web.config.</p>

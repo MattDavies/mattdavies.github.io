@@ -1,0 +1,46 @@
+---
+layout: post
+title: 'Fixing MSDeploy Error: Web deployment task failed. (Root element is missing.)'
+date: 2014-01-10 19:26:06.000000000 +08:00
+categories:
+- Azure
+- IIS
+- MSDeploy
+tags:
+- azure
+- iis
+- msdeploy
+status: publish
+type: post
+published: true
+meta:
+  _edit_last: '1'
+  _su_rich_snippet_type: none
+author:
+  login: admin
+  email: matt@mdavies.net
+  display_name: Matt
+  first_name: ''
+  last_name: ''
+---
+<p>In one of my <a href="https://github.com/MRCollective" target="_blank">MRCollective</a> open source projects <a href="https://github.com/MRCollective/AzureWebFarm" target="_blank">AzureWebFarm</a>, we configure a set of Windows Azure Web Roles such that a change deployed to any of them using MSDeploy will automatically sync to the other servers. Up to and including MSDeploy v2 this worked fine, but in a Windows Server 2012 Azure server environment MSDeploy v3 returns the following exception (if deploying to a role with more than one instance):</p>
+<pre>Web deployment task failed. (Root element is missing.)</pre>
+<p>The more verbose version of this exception:</p>
+<pre><code>System.Xml.XmlException: Root element is missing.
+     at System.Xml.XmlTextReaderImpl.ThrowWithoutLineInfo(String res)
+     at System.Xml.XmlTextReaderImpl.ParseDocumentContent()
+     at System.Xml.XmlReader.MoveToContent()
+     at Microsoft.Web.Deployment.TraceEventSerializer.Deserialize(Stream responseStream, DeploymentBaseContext baseContext, DeploymentSyncContext syncContext)
+     at Microsoft.Web.Deployment.AgentClientProvider.RemoteDestSync(DeploymentObject sourceObject, DeploymentSyncContext syncContext, Nullable`1 syncPass) at Microsoft.Web.Deployment.DeploymentObject.SyncToInternal(DeploymentObjectdestObject, DeploymentSyncOptions syncOptions, PayloadTable payloadTable, ContentRootTable contentRootTable, Nullable`1 syncPassId) at Microsoft.Web.Deployment.DeploymentObject.SyncTo(DeploymentProviderOptions providerOptions, DeploymentBaseOptions baseOptions, DeploymentSyncOptions syncOptions) at MSDeploy.MSDeploy.ExecuteWorker()
+</code></pre>
+<p>You might also observe the following exception on the server:</p>
+<pre><code>wmsvc.exe Error: 0 : ERROR_SERIALIZER_ALREADY_DISPOSED - The object 'Microsoft.Web.Deployment.TraceEventStreamSerializer' has already been disposed. 
+ProcessId=3404
+ThreadId=12
+DateTime=2013-03-31T10:00:40.4910669Z
+Timestamp=8992845619
+</code></pre>
+<p>Tracing this further showed that MSDeploy v3 appears to use multiple connections, and those connections were distributed to multiple servers in our test web farms for a single deployment, causing msdeploy to fail pretty miserably with these XML errors.</p>
+<p>The solution was to ensure that all MSDeploy connections from the client end up at a single server in the web farm, rather than being distributed to multiple servers. To achieve this in Windows Azure, you can create a custom load balancer endpoint in ServiceDefinition.csdef - take a look at the <code>loadBalancerProbe="WebDeploy"</code> and the <code>LoadBalancerProbe</code> config setting in our <a href="https://github.com/MRCollective/AzureWebFarm/blob/master/AzureWebFarm.Example.Cloud/ServiceDefinition.csdef" target="_blank">example ServiceDefinition.csdef</a> for reference. You can read more about custom load balancer endpoints in <a href="http://blog.mdavies.net/2013/04/27/custom-load-balancing-endpoints-azure-web-worker-vm-role/" target="_blank">this post</a>.</p>
+<p>That custom probe hits a file we created called Probe.aspx. That file contains a really simple piece of code which attempts to get an Azure Blob Storage lease on a blob we specify. Only one instance will ever be able to get that lease at a time, and if it ever fails, another instance will pick it up, ensuring this solution still gives us redundancy for deployments.</p>
+<p>Should an instance successfully get the lease, it will return a HTTP OK status on that load balancer endpoint, and the Azure Fabric will know that it's fine to route web deploy requests to that instance. All the other instances will fail to get the lease, and return a HTTP error status back to the endpoint, meaning the Azure Fabric will not send any web deploy requests to all other instances (ensuring it all works happily with MSDeploy v3).</p>

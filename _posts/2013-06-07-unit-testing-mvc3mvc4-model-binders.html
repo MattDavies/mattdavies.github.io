@@ -1,0 +1,218 @@
+---
+layout: post
+title: Unit testing MVC3/MVC4 Model Binders
+date: 2013-06-07 20:13:02.000000000 +08:00
+categories:
+- General C#
+- MVC
+tags:
+- ".NET MVC"
+- Autofac
+- AutoSubstitute
+- C#
+- Model Binding
+- NSubstitute
+- NUnit
+status: publish
+type: post
+published: true
+meta:
+  _edit_last: '1'
+  _su_rich_snippet_type: none
+  _social_aggregated_ids: a:2:{s:7:"twitter";a:0:{}s:8:"facebook";a:0:{}}
+  _social_aggregation_log: a:26:{i:1370608525;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1370610326;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1370613027;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1370616627;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1370623830;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1370639993;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1370665187;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1370667634;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1370671680;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1370675707;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1370683268;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1370699059;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1370728314;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1370773259;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1370860436;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1371034200;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1371639920;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1371642616;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1371645552;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1371649960;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1371658566;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1371673069;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1371702022;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1371745255;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1371831771;O:8:"stdClass":1:{s:6:"manual";b:0;}i:1372005023;O:8:"stdClass":1:{s:6:"manual";b:0;}}
+author:
+  login: admin
+  email: matt@mdavies.net
+  display_name: Matt
+  first_name: ''
+  last_name: ''
+---
+<p><strong>Update:</strong>  I'm always trying to find improved ways of implementing and testing model binders. See <a href="https://github.com/MattDavies/MvcModelBinderTesting">https://github.com/MattDavies/MvcModelBinderTesting</a> for the latest version, and feel free to send a pull request if you have any suggestions!</p>
+<p>Here's a really simple helper base class for testing MVC model binders. There's an example at the bottom of this post covering usage of this class.</p>
+<p>This will work for simple model binders which don't take IoC dependencies, use the BindingContext to retrieve values and don't use the ControllerContext parameter passed to BindModel():</p>
+<pre lang="csharp" escaped="true" line="1">public abstract class ModelBinderTestBase&lt;TBinder, TModel&gt; where TBinder : IModelBinder, new()
+{
+    private ModelBindingContext _bindingContext;
+    private NameValueCollection _formCollection = new NameValueCollection();
+
+    protected void SetFormValues(NameValueCollection formValues)
+    {
+        _formCollection = formValues;
+    }
+
+    protected TModel BindModel()
+    {
+        SetupBindingContext();
+        new TBinder().BindModel(null, _bindingContext);
+        return (TModel)_bindingContext.ModelMetadata.Model;
+    }
+
+    private void SetupBindingContext()
+    {
+        var valueProvider = new NameValueCollectionValueProvider(_formCollection, null);
+        var modelMetadata = ModelMetadataProviders.Current.GetMetadataForType(null, typeof(TBinder));
+        _bindingContext = new ModelBindingContext
+        {
+            ModelName = typeof(TModel).Name,
+            ValueProvider = valueProvider,
+            ModelMetadata = modelMetadata
+        };
+    }
+}
+</pre>
+<p>We can extend this base class to cover dependencies by resolving the model binder using your favourite mocking library. I use a library I helped create called <a href="https://www.nuget.org/packages/AutofacContrib.NSubstitute/" target="_blank">AutofacContrib.NSubstitute</a>:</p>
+<pre lang="csharp" escaped="true" line="1">public abstract class ModelBinderTestBase&lt;TBinder, TModel&gt; where TBinder : IModelBinder
+{
+    private ModelBindingContext _bindingContext;
+    private NameValueCollection _formCollection = new NameValueCollection();
+
+    protected void SetFormValues(NameValueCollection formValues)
+    {
+        _formCollection = formValues;
+    }
+
+    protected TModel BindModel()
+    {
+        SetupBindingContext();
+        new AutoSubstitute().Resolve&lt;TBinder&gt;().BindModel(null, _bindingContext);
+        return (TModel)_bindingContext.ModelMetadata.Model;
+    }
+
+    private void SetupBindingContext()
+    {
+        var valueProvider = new NameValueCollectionValueProvider(_formCollection, null);
+        var modelMetadata = ModelMetadataProviders.Current.GetMetadataForType(null, typeof(TBinder));
+        _bindingContext = new ModelBindingContext
+        {
+            ModelName = typeof(TModel).Name,
+            ValueProvider = valueProvider,
+            ModelMetadata = modelMetadata
+        };
+    }
+}
+</pre>
+<p>We can easily extend the class to support ControllerContext using the same mocking library.</p>
+<p>Final version (Autofac / NSubstitute / NUnit) - feel free to adjust to suit your needs or leave a comment if you need a hand:</p>
+<pre lang="csharp" escaped="true" line="1">public abstract class ModelBinderTestBase&lt;TBinder, TModel&gt; where TBinder : DefaultModelBinder
+{
+    #region Setup base + private methods
+
+    private ControllerContext _context;
+    private ModelBindingContext _bindingContext;
+    protected AutoSubstitute AutoSubstitute;
+    private NameValueCollection _formCollection;
+
+    [SetUp]
+    protected void Setup()
+    {
+        AutoSubstitute = new AutoSubstitute();
+        var httpContext = Substitute.For&lt;HttpContextBase&gt;();
+        var request = Substitute.For&lt;HttpRequestBase&gt;();
+        httpContext.Request.Returns(request);
+        var controllerContext = Substitute.For&lt;ControllerContext&gt;();
+        controllerContext.HttpContext = httpContext;
+        AutoSubstitute.Provide(request);
+        AutoSubstitute.Provide(httpContext);
+        AutoSubstitute.Provide(controllerContext);
+
+        _context = AutoSubstitute.Resolve&lt;ControllerContext&gt;();
+    }
+
+    private void SetupBindingContext()
+    {
+        _formCollection = _context.HttpContext.Request.Form;
+        var valueProvider = new NameValueCollectionValueProvider(_formCollection, null);
+        var modelMetadata = ModelMetadataProviders.Current.GetMetadataForType(null, typeof(TBinder));
+        _bindingContext = new ModelBindingContext
+        {
+            ModelName = typeof(TModel).Name,
+            ValueProvider = valueProvider,
+            ModelMetadata = modelMetadata
+        };
+    }
+
+    #endregion
+
+    [Test]
+    public void Bind_to_correct_model()
+    {
+        var attr = (ModelBinderTypeAttribute)Attribute.GetCustomAttribute(typeof(TBinder), typeof(ModelBinderTypeAttribute));
+        Assert.That(attr, Is.Not.Null, "The ModelBinderType attribute is missing");
+        Assert.That(attr.TargetTypes, Is.Not.Null, "No bindings are defined");
+        Assert.That(attr.TargetTypes.ToList()[0], Is.EqualTo(typeof(TModel)), String.Format("The binding is incorrect; it should be {0}", typeof(TModel).FullName));
+    }
+
+    protected void SetFormValues(NameValueCollection formValues)
+    {
+        _context.HttpContext.Request.Form.Returns(formValues);
+    }
+
+    protected TModel BindModel()
+    {
+        SetupBindingContext();
+        AutoSubstitute.Resolve&lt;TBinder&gt;().BindModel(_context, _bindingContext);
+        return (TModel)_bindingContext.ModelMetadata.Model;
+    }
+
+    protected void AssertModelError(string key, string error)
+    {
+        Assert.That(_bindingContext.ModelState.ContainsKey(key), key + " not present in model state");
+        Assert.That(_bindingContext.ModelState[key].Errors.Count, Is.EqualTo(1), "Expecting an error against " + key);
+        Assert.That(_bindingContext.ModelState[key].Errors[0].ErrorMessage, Is.EqualTo(error), "Expecting different error message for model state against " + key);
+    }
+}
+</pre>
+<p>Example model:</p>
+<pre lang="csharp" escaped="true" line="1">public class ExampleViewModel
+{
+    public int? TestInteger { get; set; } 
+}
+</pre>
+<p>Example model binder:</p>
+<pre lang="csharp" escaped="true" line="1">[ModelBinderType(typeof(ExampleViewModel))]
+public class ExampleModelBinder : DefaultModelBinder
+{
+    public override object BindModel(ControllerContext controllerContext, ModelBindingContext bindingContext)
+    {
+        var viewModel = new ExampleViewModel();
+
+        var monkey = bindingContext.ValueProvider.GetValue("someNumber");
+        if (monkey == null)
+        {
+            bindingContext.ModelState.AddModelError("TestInteger", "You didn't submit a number.");
+        }
+        else
+        {
+            viewModel.TestInteger = (int?) monkey.ConvertTo(typeof (int?));
+        }
+
+        bindingContext.ModelMetadata.Model = viewModel;
+        return base.BindModel(controllerContext, bindingContext);
+    }
+}
+</pre>
+<p>Example test:</p>
+<pre lang="csharp" escaped="true" line="1">[TestFixture]
+public class ExampleModelBinderShould : ModelBinderTestBase&lt;ExampleModelBinder, ExampleViewModel&gt;
+{
+     [Test]
+     public void Have_int_set_to_input()
+     {
+         SetFormValues(new NameValueCollection{{"someNumber", "3"}});
+
+         var vm = BindModel();
+
+         Assert.That(vm.TestInteger, Is.EqualTo(3));
+     }
+
+    [Test]
+    public void Not_bind_if_no_integer_submitted()
+    {
+        var vm = BindModel();
+
+        Assert.That(vm.TestInteger, Is.Null);
+        AssertModelError("TestInteger", "You didn't submit a number.");
+    }
+}
+</pre>
