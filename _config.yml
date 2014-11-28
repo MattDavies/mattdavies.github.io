@@ -6,7 +6,7 @@ relative_permalinks: true
 title:            '@mdaviesnet Blog'
 tagline:          ''
 description:      '.NET, Azure, MVC'
-url:              http://blog.mdavies.net
+url:              http://mdavies.net
 baseurl:          /
 
 author:
