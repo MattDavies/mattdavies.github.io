@@ -3,28 +3,13 @@ layout: page
 title: About
 ---
 
-<p class="message">
-  Hey there! This page is included as an example. Feel free to customize it for your own use upon downloading. Carry on!
-</p>
+Hey there! My name is Matt Davies. I'm a Senior Consultant at [Readify](http://readify.net), an active [open source](https://github.com/MRCollective) contributor and a small business owner running a variety of gaming websites and apps.
 
-In the novel, *The Strange Case of Dr. Jeykll and Mr. Hyde*, Mr. Poole is Dr. Jekyll's virtuous and loyal butler. Similarly, Poole is an upstanding and effective butler that helps you build Jekyll themes. It's made by [@mdo](https://twitter.com/mdo).
+## Blog
 
-There are currently two themes built on Poole:
+* This blog is built with [Jekyll](http://jekyllrb.com)
+* Developed on GitHub and hosted on [GitHub Pages](https://pages.github.com)
 
-* [Hyde](http://hyde.getpoole.com)
-* [Lanyon](http://lanyon.getpoole.com)
-
-Learn more and contribute on [GitHub](https://github.com/poole).
-
-## Setup
-
-Some fun facts about the setup of this project include:
-
-* Built for [Jekyll](http://jekyllrb.com)
-* Developed on GitHub and hosted for free on [GitHub Pages](https://pages.github.com)
-* Coded with [Sublime Text 2](http://sublimetext.com), an amazing code editor
-* Designed and developed while listening to music like [Blood Bros Trilogy](https://soundcloud.com/maddecent/sets/blood-bros-series)
-
-Have questions or suggestions? Feel free to [open an issue on GitHub](https://github.com/poole/issues/new) or [ask me on Twitter](https://twitter.com/mdo).
+Have questions or suggestions? Feel free to leave a comment on any of my posts, or [open an issue](https://github.com/MattDavies/mattdavies.github.io/issues/new) or [pull request](https://github.com/MattDavies/mattdavies.github.io/pulls) if you'd like to contribute to anything you see here.
 
 Thanks for reading!
