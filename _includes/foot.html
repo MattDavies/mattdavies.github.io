@@ -9,3 +9,13 @@
   ga('send', 'pageview');
 
 </script>
+<script src="{{ site.baseurl }}public/js/jquery-2.1.1.min.js"></script>
+<script src="{{ site.baseurl }}public/js/jquery-ias.min.js"></script>
+<script>
+var ias = jQuery.ias({
+  container:  '.posts',
+  item:       '.post',
+  pagination: '.pagination',
+  next:       '.pagination-item.newer'
+});
+</script>
