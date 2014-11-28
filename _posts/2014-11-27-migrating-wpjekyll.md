@@ -51,3 +51,38 @@ There's lots of hosting options - after all, Jekyll ends up generating plain old
 1. Create a repository on [GitHub Pages](https://github.com/new) named yourgithubusername.github.io.
 2. Create a git repository using the template folder from the previous section and push it up to your new GitHub repository using your tool of choice. You'll want to make sure you've pushed to the master branch of the repository.
 3. Hang tight! It might take up to 10 minutes, but your blog should become available at http://yourgithubusername.github.io.
+
+Migrate from Wordpress
+---
+
+1. In your wordpress admin panel, Tools > Export > All Content. Save the resultant file to your blog folder as wordpress.xml, or modify the filename in the command below.
+
+{% highlight powershell %}
+gem install jekyll-import hpricot
+ruby -rubygems -e "require 'jekyll-import'; JekyllImport::Importers::WordpressDotCom.run({ 'source' => 'wordpress.xml' })"
+{% endhighlight %}
+
+Import comments
+---
+
+The above will have imported all your posts and images. A common requirement at this point is to set up a comment plugin such as Disqus and import your old comments.
+
+1. [Create a Disqus account](https://disqus.com/admin/signup/?utm_source=New-Site)
+2. Grab the Universal Code snippet and drop it into your blog wherever you'd like comments to appear. In our example template above, you'd most likely drop it into _layouts\post.html.
+3. To make sure we exclude index.html from our URL which Disqus uses to uniquely identify a page, drop the following line into the template for each page - in the above, _includes\head.html (inside <head></head>):
+
+{% highlight html %}
+
+<link rel="canonical" href="http://yourblogurl.com{{ page.url | replace:'index.html','' }}" />
+
+{% endhighlight %}
+
+And the following line of javascript into the Universal Code snippet you pasted in step 2:
+
+{% highlight javascript %}
+
+var disqus_url = "http://yourblogurl.com{{ page.url | replace:'index.html','' }}";
+
+{% endhighlight %}
+
+In the Disqus admin panel under Discussions -> Import -> Wordpress, upload your wordpress.xml file from earlier. You can now delete that file.
