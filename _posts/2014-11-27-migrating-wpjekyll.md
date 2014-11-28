@@ -3,7 +3,7 @@ layout: post
 title: Express install Jekyll on Windows and import a Wordpress blog
 ---
 
-There's a huge array of great posts covering installing Jekyll and migrating from Wordpress to Jekyll. I still needed to pull everything together from a few sources (and needed some test material for my first post since migrating to Jekyll), so I've put together a quick shortcut guide (mostly scripted) below. Past this point, I'll assume you've already made the decision to jump ship and just need a quick set of commands to run!
+There's a huge array of great posts covering [installing Jekyll](http://jekyll-windows.juthilo.com/) and [migrating](http://www.girliemac.com/blog/2013/12/27/wordpress-to-jekyll/) [from](http://blog.8thcolor.com/en/2014/05/migrate-from-wordpress/) [Wordpress](http://leopard.in.ua/2012/06/14/how-to-migrate-from-wordpress-to-jekyll/) [to](http://www.leemunroe.com/moving-wordpress-dreamhost-to-jekyll-github/) [Jekyll](http://paulstamatiou.com/how-to-wordpress-to-jekyll/). I still needed to pull everything together from a few sources (and needed some test material for my first post since migrating to Jekyll), so I've put together a quick shortcut guide (mostly scripted) below. Past this point, I'll assume you've already made the decision to jump ship and just need a quick set of commands to run!
 
 Pull up a powershell terminal elevated to Administrator and lets get going.
 
