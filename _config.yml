@@ -21,3 +21,5 @@ version:          2.1.0
 github:
   repo:           https://github.com/MattDavies/mattdavies.github.io
 permalink:    /:year/:month/:day/:title/
+
+timezone: Australia/Perth
