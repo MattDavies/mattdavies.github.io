@@ -3,3 +3,12 @@
 	-moz-border-radius: 50%;
 	-webkit-border-radius: 50%;
 }
+
+/* Custom Azure Blue */
+.theme-azure .sidebar {
+  background-color: #2086bf;
+}
+.theme-azure .content a,
+.theme-azure .related-posts li a:hover {
+  color: #2086bf;
+}
