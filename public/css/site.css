@@ -1,3 +1,12 @@
+.twitter-widget {
+	display: none;
+}
+@media (min-width: 48em) {
+	.twitter-widget {
+		display: block;
+	}
+}
+
 .avatar {
 	border-radius: 50%;
 	-moz-border-radius: 50%;
