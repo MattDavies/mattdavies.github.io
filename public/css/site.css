@@ -11,13 +11,22 @@
 	border-radius: 50%;
 	-moz-border-radius: 50%;
 	-webkit-border-radius: 50%;
+	
+	display: block;
+	margin-left: auto;
+	margin-right: auto;
+}
+@media (min-width: 48em) {
+	.avatar {
+		margin-left: 0;
+	}
 }
 
 /* Custom Azure Blue */
 .theme-azure .sidebar {
-  background-color: #2086bf;
+	background-color: #2086bf;
 }
 .theme-azure .content a,
 .theme-azure .related-posts li a:hover {
-  color: #2086bf;
+	color: #2086bf;
 }
