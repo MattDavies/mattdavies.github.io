@@ -6,7 +6,11 @@
   })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
   ga('create', 'UA-221584-34', 'auto');
-  ga('send', 'pageview');
+  if (window.isNotFound){
+    ga('send', 'pageview', '404.html?page='+ document.location.pathname + document.location.search +'&from=' + document.referrer);
+  }else{
+    ga('send', 'pageview');
+  }
 
 </script>
 <script src="{{ site.baseurl }}public/js/jquery-2.1.1.min.js"></script>
