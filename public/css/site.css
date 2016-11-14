@@ -24,9 +24,9 @@
 
 /* Custom Azure Blue */
 .theme-azure .sidebar {
-	background-color: #2086bf;
+	background-color: #004a7a;
 }
 .theme-azure .content a,
 .theme-azure .related-posts li a:hover {
-	color: #2086bf;
+	color: #004a7a;
 }
