@@ -23,3 +23,5 @@ In this blog series, I'll cover setting up a React Native app, some tips to help
 ----------
 
 ## Getting Started - setting up your application
+
+Coming soon!
