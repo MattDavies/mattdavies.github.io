@@ -14,7 +14,7 @@ In this blog series, I'll cover setting up a React Native app, some tips to help
 3. Automated testing - setting our level of release confidence
 4. Plugins - maximising value and avoiding pitfalls
 5. Styling your app without the frustration
-6. Debugging, logging and avoiding some common issues
+6. Debugging, logging, profiling and avoiding some common issues
 7. Code Push - rapidly pushing out most updates without binary changes
 8. Fastlane - automating certificates and provisioning profiles
 9. Fastlane - automatically pushing binaries to the App and Play Store
