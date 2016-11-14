@@ -9,10 +9,10 @@ In this blog series, I'll cover setting up a React Native app, some tips to help
 
 ----------
 
-1. Getting started - setting up your application
+1. **Getting started - setting up your application**
 2. Making your life easier - a fast development workflow
-3. Automated testing for your app
-3. Plugins for common scenarios
+3. Automated testing - setting our level of release confidence
+3. Plugins - maximising value and avoiding pitfalls
 4. Styling your app without the frustration
 5. Code Push - rapidly pushing out updates
 6. Fastlane - automatically pushing binaries to the App and Play Store
