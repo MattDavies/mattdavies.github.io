@@ -11,6 +11,5 @@ author:
 paginate:         5
 
 permalink:    /:year/:month/:day/:title/
-relative_permalinks: true
 
 timezone: Australia/Perth
